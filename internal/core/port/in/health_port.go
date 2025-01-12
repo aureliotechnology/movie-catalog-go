@@ -1,5 +1,5 @@
 package in
 
 type HealthPort interface {
-	GetHealthStatus() string
+	CheckHealth() (string, error)
 }

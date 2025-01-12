@@ -17,11 +17,21 @@ func NewHealthHandler(healthService in.HealthPort) *HealthHandler {
 
 func (h *HealthHandler) HandleHealth(w http.ResponseWriter, r *http.Request) {
 	response := map[string]string{
-		"message": h.healthService.GetHealthStatus(),
+		"message": "ok",
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func (h *HealthHandler) HandleHealthDB(w http.ResponseWriter, r *http.Request) {
+	status, err := h.healthService.CheckHealth()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		http.Error(w, "Error encoding JSON", http.StatusInternalServerError)
+	response := map[string]string{
+		"message": status,
 	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }

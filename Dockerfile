@@ -1,5 +1,5 @@
 # Etapa 1: Build
-FROM golang:1.20 AS builder
+FROM golang:1.21 AS builder
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o movie-catalog-go -ldflags 
 # Etapa 2: Runtime
 FROM scratch
 
-WORKDIR /
+WORKDIR /root/
 
 # Copiar o binário gerado para a imagem final
 COPY --from=builder /app/movie-catalog-go .

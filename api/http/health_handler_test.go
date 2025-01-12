@@ -1,7 +1,8 @@
 package http
 
 import (
-	"encoding/json"
+	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -9,36 +10,68 @@ import (
 	"movie-catalog-go/internal/app"
 )
 
-func TestHealthHandler(t *testing.T) {
-	// Mock do serviço de saúde
-	healthService := app.NewHealthService()
-	handler := NewHealthHandler(healthService)
+// Mock do DatabaseChecker
+type MockDatabaseChecker struct {
+	ShouldFail bool
+}
 
-	// Criar uma requisição HTTP simulada
-	req, err := http.NewRequest(http.MethodGet, "/health", nil)
-	if err != nil {
-		t.Fatalf("Não foi possível criar a requisição: %v", err)
+func (m *MockDatabaseChecker) Ping(ctx context.Context) error {
+	if m.ShouldFail {
+		return errors.New("database connection error")
+	}
+	return nil
+}
+
+func TestHealthHandler_HandleHealthDB(t *testing.T) {
+	tests := []struct {
+		name           string
+		mockShouldFail bool
+		expectedStatus int
+		expectedBody   string
+	}{
+		{
+			name:           "Database connection is healthy",
+			mockShouldFail: false,
+			expectedStatus: http.StatusOK,
+			expectedBody:   `{"message":"ok"}`,
+		},
+		{
+			name:           "Database connection fails",
+			mockShouldFail: true,
+			expectedStatus: http.StatusInternalServerError,
+			expectedBody:   `{"message":"database connection error"}`,
+		},
 	}
 
-	// Criar um ResponseRecorder para capturar a resposta
-	rr := httptest.NewRecorder()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Mock do serviço de saúde
+			mockDB := &MockDatabaseChecker{ShouldFail: tt.mockShouldFail}
+			healthService := app.NewHealthService(mockDB)
+			handler := NewHealthHandler(healthService)
 
-	// Chamar o manipulador diretamente
-	handler.HandleHealth(rr, req)
+			// Criar uma requisição simulada
+			req, err := http.NewRequest(http.MethodGet, "/health-db", nil)
+			if err != nil {
+				t.Fatalf("Não foi possível criar a requisição: %v", err)
+			}
 
-	// Verificar o status da resposta
-	if status := rr.Code; status != http.StatusOK {
-		t.Errorf("Código de status incorreto: obtido %v, esperado %v", status, http.StatusOK)
-	}
+			// Criar um ResponseRecorder para capturar a resposta
+			rr := httptest.NewRecorder()
 
-	// Verificar o corpo da resposta
-	expected := map[string]string{"message": "ok"}
-	var actual map[string]string
-	if err := json.Unmarshal(rr.Body.Bytes(), &actual); err != nil {
-		t.Fatalf("Erro ao decodificar o corpo da resposta: %v", err)
-	}
+			// Chamar o manipulador diretamente
+			handler.HandleHealthDB(rr, req)
 
-	if actual["message"] != expected["message"] {
-		t.Errorf("Resposta incorreta: obtido %v, esperado %v", actual, expected)
+			// Verificar o status da resposta
+			if status := rr.Code; status != tt.expectedStatus {
+				t.Errorf("Código de status incorreto: obtido %v, esperado %v", status, tt.expectedStatus)
+			}
+
+			// Verificar o corpo da resposta
+			actualBody := rr.Body.String()
+			if actualBody != tt.expectedBody+"\n" {
+				t.Errorf("Corpo da resposta incorreto: obtido %v, esperado %v", actualBody, tt.expectedBody)
+			}
+		})
 	}
 }
