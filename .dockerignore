@@ -1,0 +1,12 @@
+# Ignorar arquivos desnecessários
+*.log
+*.test
+*.swp
+*.tmp
+*.out
+*.exe
+.idea/
+.vscode/
+node_modules/
+dist/
+.env
