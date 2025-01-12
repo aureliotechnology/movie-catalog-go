@@ -35,17 +35,14 @@ func main() {
 	// Inicializar o serviço de saúde
 	healthService := app.NewHealthService(db)
 
-	// Configurar manipuladores
-	healthHandler := httpHandler.NewHealthHandler(healthService)
-
-	// Registrar rotas
-	http.HandleFunc("/health", healthHandler.HandleHealth)
-	http.HandleFunc("/health-db", healthHandler.HandleHealthDB)
+	// Configurar rotas
+	mux := http.NewServeMux()
+	httpHandler.RegisterRoutes(mux, healthService)
 
 	// Iniciar servidor
 	port := ":8080"
 	log.Printf("Servidor rodando na porta %s", port)
-	if err := http.ListenAndServe(port, nil); err != nil {
+	if err := http.ListenAndServe(port, mux); err != nil {
 		log.Fatalf("Erro ao iniciar o servidor: %v", err)
 	}
 }
